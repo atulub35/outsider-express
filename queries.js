@@ -48,13 +48,11 @@ const loginUser = async (request, response) => {
         const user = result.rows[0]
 
         if (!user) {
-            console.log(`Login attempt failed: User with email ${email} not found`)
             return response.status(401).json({ error: 'Invalid credentials' })
         }
 
         const isValidPassword = await comparePassword(password, user.password)
         if (!isValidPassword) {
-            console.log(`Login attempt failed: Invalid password for user ${user.email}`)
             return response.status(401).json({ error: 'Invalid credentials' })
         }
         
@@ -68,7 +66,6 @@ const loginUser = async (request, response) => {
             token 
         })
     } catch (error) {
-        console.error('Login error:', error)
         response.status(500).json({ error: error.message })
     }
 }
@@ -155,8 +152,6 @@ const getPosts = async (request, response) => {
     const userId = request.user?.id || null;
 
     try {
-        console.log('Fetching posts with params:', { userId, query });
-        
         let sqlQuery = `
             SELECT p.*, u.name as author_name,
                    (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as likes_count,
