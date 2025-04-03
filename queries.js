@@ -1,12 +1,13 @@
-const Pool = require('pg').Pool
+const { Pool } = require('pg');
+require('dotenv').config();
 const { generateToken, hashPassword, comparePassword } = require('./config/auth')
+
 const pool = new Pool({
-    user: 'atulubarhande',
-    host: 'localhost',
-    database: 'api',
-    password: '',
-    port: 5432,
-})
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false
+    }
+});
 
 // Authentication functions
 const registerUser = async (request, response) => {
