@@ -11,24 +11,24 @@ const pool = new Pool({
 
 // Authentication functions
 const registerUser = async (request, response) => {
-    const { name, email, password } = request.body
+    const { username, email, password } = request.body
 
-    if (!name || !email || !password) {
-        return response.status(400).json({ error: 'Name, email, and password are required' })
+    if (!username || !email || !password) {
+        return response.status(400).json({ error: 'Username, email, and password are required' })
     }
 
     try {
         const hashedPassword = await hashPassword(password)
         const result = await pool.query(
-            'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email',
-            [name, email, hashedPassword]
+            'INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id, username, email',
+            [username, email, hashedPassword]
         )
         const user = result.rows[0]
         const token = generateToken(user)
         response.status(201).json({ user, token })
     } catch (error) {
         if (error.code === '23505') { // Unique violation
-            return response.status(400).json({ error: 'Email already exists' })
+            return response.status(400).json({ error: 'Email or username already exists' })
         }
         response.status(500).json({ error: error.message })
     }
