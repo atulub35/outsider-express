@@ -25,7 +25,8 @@ const generateToken = (user) => {
     return jwt.sign(
         { 
             id: user.id,
-            email: user.email 
+            email: user.email,
+            name: user.name
         },
         jwtOptions.secretOrKey,
         { expiresIn: '24h' }

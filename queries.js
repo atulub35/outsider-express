@@ -2,33 +2,35 @@ const { Pool } = require('pg');
 require('dotenv').config();
 const { generateToken, hashPassword, comparePassword } = require('./config/auth')
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: {
+    ssl: isProduction ? {
         rejectUnauthorized: false
-    }
+    } : false
 });
 
 // Authentication functions
 const registerUser = async (request, response) => {
-    const { username, email, password } = request.body
+    const { name, email, password } = request.body
 
-    if (!username || !email || !password) {
+    if (!name || !email || !password) {
         return response.status(400).json({ error: 'Username, email, and password are required' })
     }
 
     try {
         const hashedPassword = await hashPassword(password)
         const result = await pool.query(
-            'INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id, username, email',
-            [username, email, hashedPassword]
+            'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email',
+            [name, email, hashedPassword]
         )
         const user = result.rows[0]
         const token = generateToken(user)
         response.status(201).json({ user, token })
     } catch (error) {
         if (error.code === '23505') { // Unique violation
-            return response.status(400).json({ error: 'Email or username already exists' })
+            return response.status(400).json({ error: 'Email or name already exists' })
         }
         response.status(500).json({ error: error.message })
     }
@@ -46,14 +48,16 @@ const loginUser = async (request, response) => {
         const user = result.rows[0]
 
         if (!user) {
+            console.log(`Login attempt failed: User with email ${email} not found`)
             return response.status(401).json({ error: 'Invalid credentials' })
         }
 
         const isValidPassword = await comparePassword(password, user.password)
         if (!isValidPassword) {
+            console.log(`Login attempt failed: Invalid password for user ${user.email}`)
             return response.status(401).json({ error: 'Invalid credentials' })
         }
-
+        
         const token = generateToken(user)
         response.json({ 
             user: {
@@ -64,6 +68,7 @@ const loginUser = async (request, response) => {
             token 
         })
     } catch (error) {
+        console.error('Login error:', error)
         response.status(500).json({ error: error.message })
     }
 }
@@ -150,6 +155,8 @@ const getPosts = async (request, response) => {
     const userId = request.user?.id || null;
 
     try {
+        console.log('Fetching posts with params:', { userId, query });
+        
         let sqlQuery = `
             SELECT p.*, u.name as author_name,
                    (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as likes_count,
@@ -169,7 +176,10 @@ const getPosts = async (request, response) => {
         const result = await pool.query(sqlQuery, params);
         response.status(200).json(result.rows);
     } catch (error) {
-        response.status(500).json({ error: error.message });
+        response.status(500).json({ 
+            error: 'Failed to fetch posts',
+            details: error.message 
+        });
     }
 };
 
